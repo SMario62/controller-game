@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Gamepad Input + Keyboard Controls</title>
+		<style>
+			body, html {
+				margin: null;
+				/*padding: 5px; /* Adjust the value as needed */
+				/*box-sizing: border-box; /* Ensures padding doesn't affect total width */
+				overflow: hidden;
+				height: 100%;
+				background: white;
+			}
+			
+			.player {
+				position: absolute;
+				width: 50px;
+				height: 50px;
+				background: red;
+			}
+			
+			#status {
+				font-size: 20px;
+				font-weight: bold;
+				margin-top: 20px;
+			}
+			
+			.status {
+				font-size: 20px;
+				font-weight: bold;
+				margin-top: 20px;
+			}
+			
+			#staminaContainer {
+				position: relative;
+				top: 10px;
+				left: 10px;
+				width: 200px;
+				height: 20px;
+				background: gray;
+				border: 2px solid black;
+				border-radius: 5px;
+				overflow: hidden;
+			}
+
+			#staminaBarFill {
+				width: 100%; /* Full stamina initially */
+				height: 100%;
+				background: limegreen;
+				transition: width 0.1s ease-out; /* Smooth width change */
+			}
+
+		</style>
+	</head>
+	<body>
+		<h1>Gamepad and Keyboard Input Alpha Test v0.4</h1>
+		<div class="player" id="player"></div>
+		<button onclick="resetPlayerPos()">Reset Position</button>
+		<button onclick="resetAll()">Reset All</button>
+		<div id="status">Gamepad is not connected.</div>
+		<div class="status" id="staminaBar">Stamina: 100%</div>
+		<div id="staminaContainer">
+			<div id="staminaBarFill"></div>
+		</div>
+
+
+
+		<script>
+			const player = document.getElementById('player');
+			const staminaDisplay = document.getElementById('staminaBar');
+			let x = 658, y = 359; // Initial position
+			let stamina = 100;
+			const staminaRechargeDelay = 1000; // Time in ms (1 second delay)
+			let lastBoostTime = 0; // Time when the last boost occurred
+			const normalSpeed = 5; // Normal movement speed
+			const boostSpeed = 8; // Boost movement speed
+			const keys = {}; // Tracks keys currently pressed
+			let gamepad = null;
+
+			function resetPlayerPos() {
+				x = 100;
+				y = 200;
+
+				player.style.top = `${y}px`;
+				player.style.left = `${x}px`;
+			}
+
+			function resetAll() {
+				resetPlayerPos();
+
+				stamina = 100;
+				//staminaDisplay.textContent = `Stamina: ${Math.round(stamina)}%`;
+			}
+
+			// Update stamina bar
+			function updateStaminaBar() {
+				const staminaBarFill = document.getElementById('staminaBarFill');
+				// Ensure no negative values
+				staminaBarFill.style.width = `${Math.max(0, stamina)}%`;
+			}
+
+			// Update stamina
+			function updateStamina(isBoosting, isMoving) {
+				const currentTime = Date.now(); // Get the current time
+
+				if (isBoosting && isMoving) {
+					// Decrease stamina when boosting
+					if (stamina > 0) {
+						stamina -= 0.5;
+					}
+					lastBoostTime = currentTime; // Reset the last boost time when boosting
+
+				} else {
+					// Regenerate stamina when not boosting
+					if (stamina < 100 && (currentTime - lastBoostTime) > staminaRechargeDelay) {
+						stamina += 0.1; // Adjust as needed
+					}
+				}
+
+				// Update the stamina display
+				staminaDisplay.textContent = `Stamina: ${Math.round(stamina)}%`;
+				// Update the stamina display and bar
+				staminaDisplay.textContent = `Stamina: ${Math.round(stamina)}%`;
+				updateStaminaBar();
+			}
+
+			// Keyboard Input Check with Normalized Vector
+			function handleKeyboardInput() {
+				let xChange = 0;
+				let yChange = 0;
+
+				if (keys['ArrowUp']) yChange -= 1;
+				if (keys['ArrowDown']) yChange += 1;
+				if (keys['ArrowLeft']) xChange -= 1;
+				if (keys['ArrowRight']) xChange += 1;
+
+				// Determine if player is moving
+				const isMoving = xChange !== 0 || yChange !== 0;
+
+				// Determine the current speed (boost if Shift is held)
+				const isBoosting = keys['Shift']; // Keyboard boosting
+				const speed = isBoosting && stamina > 0? boostSpeed : normalSpeed;
+
+				// Calculate magnitude of the movement vector
+				const magnitude = Math.sqrt(xChange * xChange + yChange * yChange);
+
+				// Normalize the vector if magnitude is not 0
+				if (magnitude > 0) {
+					xChange = (xChange / magnitude) * speed;
+					yChange = (yChange / magnitude) * speed;
+				}
+
+				// Update stamina
+				updateStamina(isBoosting, isMoving);
+
+				// Update position
+				x += xChange;
+				y += yChange;
+
+				// Update the text content of the status div
+				const statusElement = document.getElementById('status');
+				statusElement.textContent = `Gamepad connected. X: ${x.toFixed(2)}, Y: ${y.toFixed(2)} | Speed: ${speed}`;
+
+				// Update the player's position in the DOM
+				player.style.top = `${y}px`;
+				player.style.left = `${x}px`;
+			}
+
+			// Gamepad Movement Logic with Normalized Vector
+			function handleGamepadMovement(gamepad) {
+				const leftStickX = gamepad.axes[0];
+				const leftStickY = gamepad.axes[1];
+				const isBoosting = gamepad.buttons[0]?.pressed; // Gamepad boosting (A button)
+
+				const speed = isBoosting && stamina > 0? boostSpeed : normalSpeed;
+
+				let xChange = 0;
+				let yChange = 0;
+
+				// Apply stick input thresholds to avoid small unintentional movements
+				if (Math.abs(leftStickX) > 0.2) xChange += leftStickX;
+				if (Math.abs(leftStickY) > 0.2) yChange += leftStickY;
+
+				// Determine if player is moving
+				const isMoving = xChange !== 0 || yChange !== 0;
+
+				// Calculate magnitude of the movement vector
+				const magnitude = Math.sqrt(xChange * xChange + yChange * yChange);
+
+				// Normalize the vector if magnitude is not 0
+				if (magnitude > 0) {
+					xChange = (xChange / magnitude) * speed; // Adjust multiplier for gamepad
+					yChange = (yChange / magnitude) * speed;
+				}
+
+				// Update stamina
+				updateStamina(isBoosting, isMoving);
+
+				// Update position
+				x += xChange;
+				y += yChange;
+
+				// Update the text content of the status div
+				const statusElement = document.getElementById('status');
+				statusElement.textContent = `Gamepad connected. X: ${x.toFixed(2)}, Y: ${y.toFixed(2)} | Speed: ${speed}`;
+			}
+
+			// Handle gamepad input
+			function handleGamepadInput() {
+				const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+				gamepad = gamepads[0];
+
+				if (gamepad) {
+					handleGamepadMovement(gamepad);
+				}
+			}
+
+			// Handle keydown and keyup events
+			window.addEventListener('keydown', (e) => {
+				keys[e.key] = true;
+			});
+
+			window.addEventListener('keyup', (e) => {
+				keys[e.key] = false;
+			});
+
+			// Game loop
+			function gameLoop() {
+				handleGamepadInput(); // Handle gamepad input
+				handleKeyboardInput(); // Handle keyboard input
+				requestAnimationFrame(gameLoop); // Repeat the loop
+			}
+
+			// Start the game loop
+			gameLoop();
+		</script>
+	</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Gamepad Input + Keyboard Controls</title>
+		<style>
+			body, html {
+				margin: 0;
+				overflow: hidden;
+				height: 100%;
+				background: white;
+			}
+			.player {
+				position: absolute;
+				width: 50px;
+				height: 50px;
+				background: red;
+			}
+			#status {
+				font-size: 20px;
+				font-weight: bold;
+				margin-top: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Gamepad and Keyboard Input Demo</h1>
+		<div id="status">Gamepad is not connected.</div>
+		<div class="player" id="player"></div>
+
+		<script>
+			const player = document.getElementById('player');
+			let x = 100, y = 100; // Initial position
+			const normalSpeed = 5; // Movement speed
+			const keys = {}; // Tracks keys currently pressed
+			let gamepad = null;
+
+			// Gamepad Input Check
+			function checkGamepadInput() {
+				const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+				gamepad = gamepads[0];
+
+				if (gamepad) {
+					handleGamepadMovement(gamepad);
+				}
+			}
+
+			// Gamepad movement logic (left stick for movement)
+			function handleGamepadMovement(gamepad) {
+				const leftStickX = gamepad.axes[0];
+				const leftStickY = gamepad.axes[1];
+				const aButton = gampad.button[0];
+
+				// Update movement based on left stick input
+				if (leftStickX < -0.2) {
+					x -= speed;
+				} else if (leftStickX > 0.2) {
+					x += speed;
+				}
+
+				if (leftStickY < -0.2) {
+					y -= speed;
+				} else if (leftStickY > 0.2) {
+					y += speed;
+				}
+
+				// Update the text content of the status div
+				const statusElement = document.getElementById('status');
+				statusElement.textContent = `Current Action: Gamepad connected`;
+			}
+
+			// Keyboard Input Check
+			function updatePosition() {
+				if (keys['ArrowUp']) y -= speed;
+				if (keys['ArrowDown']) y += speed;
+				if (keys['ArrowLeft']) x -= speed;
+				if (keys['ArrowRight']) x += speed;
+
+				// Update the player's position in the DOM
+				player.style.top = `${y}px`;
+				player.style.left = `${x}px`;
+
+				// Request the next frame of the game loop
+				requestAnimationFrame(updatePosition);
+			}
+
+			// Handle keydown event
+			window.addEventListener('keydown', (e) => {
+				keys[e.key] = true; // Mark the key as pressed
+			});
+
+			// Handle keyup event
+			window.addEventListener('keyup', (e) => {
+				keys[e.key] = false; // Mark the key as released
+			});
+
+			// Game loop to handle both gamepad and keyboard input
+			function gameLoop() {
+				checkGamepadInput(); // Check gamepad input
+				updatePosition(); // Update position based on keyboard input
+				requestAnimationFrame(gameLoop); // Repeat the loop
+			}
+
+			// Start the game loop
+			gameLoop();
+		</script>
+	</body>
+</html>

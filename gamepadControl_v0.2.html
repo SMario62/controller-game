@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamepad Input + Keyboard Controls</title>
+    <style>
+        body, html {
+            margin: 0;
+            overflow: hidden;
+            height: 100%;
+            background: white;
+        }
+        .player {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: red;
+        }
+        #status {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gamepad and Keyboard Input Demo</h1>
+    <div id="status">Gamepad is not connected.</div>
+    <div class="player" id="player"></div>
+
+    <script>
+        const player = document.getElementById('player');
+        let x = 100, y = 100; // Initial position
+        const speed = 1; // Movement speed
+		 const boostSpeed = 8; // Boost speed
+        const keys = {}; // Tracks keys currently pressed
+        let gamepad = null;
+
+        // Keyboard Input Check with Normalized Vector
+        function updatePosition() {
+            let xChange = 0;
+            let yChange = 0;
+
+            if (keys['ArrowUp']) yChange -= 1;
+            if (keys['ArrowDown']) yChange += 1;
+            if (keys['ArrowLeft']) xChange -= 1;
+            if (keys['ArrowRight']) xChange += 1;
+
+            // Calculate magnitude of the movement vector
+            const magnitude = Math.sqrt(xChange * xChange + yChange * yChange);
+
+            // Normalize the vector if magnitude is not 0
+            if (magnitude > 0) {
+                xChange = (xChange / magnitude) * speed * 5;
+                yChange = (yChange / magnitude) * speed * 5;
+            }
+
+            // Update position
+            x += xChange;
+            y += yChange;
+
+            // Update the player's position in the DOM
+            player.style.top = `${y}px`;
+            player.style.left = `${x}px`;
+        }
+
+        // Gamepad Movement Logic with Normalized Vector
+        function handleGamepadMovement(gamepad) {
+            const leftStickX = gamepad.axes[0];
+            const leftStickY = gamepad.axes[1];
+
+            let xChange = 0;
+            let yChange = 0;
+
+            // Apply stick input thresholds to avoid small unintentional movements
+            if (Math.abs(leftStickX) > 0.2) xChange += leftStickX;
+            if (Math.abs(leftStickY) > 0.2) yChange += leftStickY;
+
+            // Calculate magnitude of the movement vector
+            const magnitude = Math.sqrt(xChange * xChange + yChange * yChange);
+
+            // Normalize the vector if magnitude is not 0
+            if (magnitude > 0) {
+                xChange = (xChange / magnitude) * speed * 5; // Adjust multiplier for gamepad
+                yChange = (yChange / magnitude) * speed * 5;
+            }
+
+            // Update position
+            x += xChange;
+            y += yChange;
+
+            // Update the text content of the status div
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = `Gamepad connected. X: ${x.toFixed(2)}, Y: ${y.toFixed(2)}`;
+        }
+
+        // Handle gamepad input
+        function handleGamepadInput() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            gamepad = gamepads[0];
+
+            if (gamepad) {
+                handleGamepadMovement(gamepad);
+            }
+        }
+
+        // Handle keydown and keyup events
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Game loop
+        function gameLoop() {
+            handleGamepadInput(); // Handle gamepad input
+            updatePosition(); // Handle keyboard input
+            requestAnimationFrame(gameLoop); // Repeat the loop
+        }
+
+        // Start the game loop
+        gameLoop();
+    </script>
+</body>
+</html>
